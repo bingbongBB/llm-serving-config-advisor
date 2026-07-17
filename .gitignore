@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+# raw benchmark artifacts are large; commit only parsed CSVs + plots
+results/raw/
+!results/raw/.gitkeep
+models/
+*.nsys-rep
+.env

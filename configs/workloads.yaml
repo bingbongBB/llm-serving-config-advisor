@@ -1,0 +1,50 @@
+# Workload + SLA definitions — the contract everything else benchmarks against.
+# Length distributions feed GenAI-Perf's synthetic prompt generation.
+
+# RTX 4060 8GB: 3B FP16 weights ≈ 6.2 GB → ~1 GB left for KV cache.
+# Quantization freeing VRAM for KV/batch is itself a core finding of this project.
+model: Qwen/Qwen2.5-3B-Instruct
+
+workloads:
+  interactive:
+    description: >
+      Chat/assistant-style traffic: short prompts, short answers,
+      latency-sensitive users waiting on the first token.
+    input_tokens_mean: 256
+    input_tokens_stddev: 64
+    output_tokens_mean: 128
+    output_tokens_stddev: 32
+    concurrency_sweep: [1, 2, 4, 8, 16, 32]
+    sla:
+      ttft_p95_ms: 500        # p95 time-to-first-token
+      tpot_p95_ms: 50         # p95 time-per-output-token (~20 tok/s perceived)
+
+  batch_summarization:
+    description: >
+      Offline/nearline document summarization: long inputs, throughput-driven,
+      latency matters only loosely.
+    input_tokens_mean: 2048
+    input_tokens_stddev: 384
+    output_tokens_mean: 256
+    output_tokens_stddev: 64
+    concurrency_sweep: [2, 4, 8, 16, 32]
+    sla:
+      e2e_p95_s: 60           # p95 end-to-end request latency
+      # objective: max output-token throughput within SLA
+
+configs:
+  fp16:
+    served_model: Qwen/Qwen2.5-3B-Instruct
+    vllm_args: ""
+  fp8:
+    served_model: Qwen/Qwen2.5-3B-Instruct
+    vllm_args: "--quantization fp8"
+  awq:
+    served_model: Qwen/Qwen2.5-3B-Instruct-AWQ
+    vllm_args: ""
+
+cost:
+  # Anchor $/1M tokens to a published cloud price for a 24GB-class GPU.
+  # Fill in a real quote + URL in week 3 and state the assumption in the report.
+  gpu_hourly_usd: 0.44        # placeholder — e.g. RunPod/Lambda L4/4090-class rate
+  price_source_url: TODO
