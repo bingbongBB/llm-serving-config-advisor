@@ -1,7 +1,7 @@
 # Week 1 — Environment + FP16 baseline
 
 **Hours spent:** __ / 20
-**Status:** ☑ done (batch sweep pending)
+**Status:** ☑ done
 
 ## Goals (from PLAN.md)
 
@@ -10,7 +10,7 @@
 - [x] Qwen2.5-3B FP16 served, API smoke-tested
 - [x] Workloads + SLA defined in `configs/workloads.yaml`
 - [x] Interactive concurrency sweep (1→32) complete
-- [ ] Batch summarization sweep (in progress)
+- [x] Batch summarization sweep (2→16) complete
 
 ## Baseline numbers (FP16, interactive workload)
 
@@ -24,6 +24,17 @@ SLA: TTFT p95 < 500 ms, TPOT p95 < 50 ms.
 | 8 | 195 | 31.6 | 229 | yes |
 | 16 | 216 | 36.4 | 428 | yes |
 | 32 | 5,436 | 35.9 | 458 | **NO — queueing** |
+
+## Baseline numbers (FP16, batch_summarization workload)
+
+SLA: e2e p95 < 60 s (throughput-oriented).
+
+| Concurrency | TTFT p95 (ms) | TPOT p95 (ms) | e2e p95 (s) | Out tok/s | Within SLA? |
+|---|---|---|---|---|---|
+| 2 | 740 | 31.1 | 10.0 | 62 | yes |
+| 4 | 792 | 35.5 | 11.7 | 107 | yes |
+| 8 | 1,044 | 45.7 | 14.5 | 172 | yes |
+| 16 | 8,156 | 56.9 | 22.5 | 216 | yes, but queueing |
 
 ## Key findings
 
@@ -39,6 +50,12 @@ SLA: TTFT p95 < 500 ms, TPOT p95 < 50 ms.
 3. **FP16 SLA capacity on this machine: concurrency 16, ~430 tok/s.**
    Week 2 hypothesis: FP8/AWQ free ~3 GB of weights for KV cache, relaxing the
    seq cap and pushing the queueing wall right.
+4. **The capacity knee is workload-dependent — the project's core thesis, observed.**
+   Same machine, same model: interactive (≈270-token inputs) saturates at c=16,
+   batch summarization (≈2k-token inputs) already queues between c=8 and 16
+   (TTFT p95 1.0 s → 8.2 s, throughput +25% only). Longer inputs eat ~5× more
+   KV cache per request, so the effective concurrency ceiling halves. Any
+   deployment recommendation must therefore be workload-aware.
 
 ## Blockers & how resolved
 
